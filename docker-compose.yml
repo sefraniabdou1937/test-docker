@@ -1,0 +1,14 @@
+version: '3.8'
+
+services:
+  mon-environnement-data:
+    image: mon_airflow_spark
+    container_name: airflow_spark_lab
+    command: airflow standalone
+    ports:
+      - "8080:8080"
+    volumes:
+      # Le format est toujours : "dossier_windows : dossier_linux"
+      - ./dags:/opt/airflow/dags
+      - ./data:/opt/airflow/data
+      - ./jobs:/opt/airflow/jobs
