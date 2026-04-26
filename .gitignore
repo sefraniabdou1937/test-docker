@@ -1,0 +1,35 @@
+# ==========================================
+# 1. DONNÉES (Data Engineering)
+# ==========================================
+# Ignore tout le contenu du dossier data pour ne pas commit les JSON, CSV ou Parquet
+data/*
+
+# (Optionnel) Force Git à garder le dossier "data" vide dans le repo en autorisant un fichier .gitkeep
+!data/.gitkeep
+
+# ==========================================
+# 2. CACHE PYTHON
+# ==========================================
+# Ignore les fichiers compilés générés par tes scripts (présents dans ton dossier dags/)
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# ==========================================
+# 3. FICHIERS D'EXÉCUTION AIRFLOW & DOCKER
+# ==========================================
+# Ignore les fichiers de processus (comme celui qui bloquait ton port 8080)
+airflow-webserver.pid
+airflow-webserver.err
+airflow-scheduler.pid
+
+# Ignore les logs générés par Airflow
+logs/
+*.log
+
+# ==========================================
+# 4. ENVIRONNEMENT SPARK / JUPYTER (Anticipation)
+# ==========================================
+spark-warehouse/
+.ipynb_checkpoints/
