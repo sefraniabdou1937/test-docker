@@ -1,17 +1,50 @@
 version: '3.8'
 
+x-airflow-common: &airflow-common
+  build: .
+  image: mon_airflow_spark_pro
+  environment:
+    - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres/airflow
+    - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+    - AIRFLOW__CORE__LOAD_EXAMPLES=False
+    - AIRFLOW__WEBSERVER__WEB_SERVER_HOST=0.0.0.0
+    - JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64  
+  volumes:
+    - ./dags:/opt/airflow/dags
+    - ./data:/opt/airflow/data
+    - ./jobs:/opt/airflow/jobs
+    - ./logs:/opt/airflow/logs
+  depends_on:
+    postgres:
+      condition: service_healthy
+
 services:
-  mon-environnement-data:
-    build: .  # <-- AJOUTE CETTE LIGNE ICI
-    image: mon_airflow_spark
-    container_name: airflow_spark_lab
-    command: airflow standalone
+  postgres:
+    image: postgres:13
     environment:
-      - AIRFLOW__WEBSERVER__WEB_SERVER_HOST=0.0.0.0 # Règle ton problème de localhost
-      - AIRFLOW__CORE__LOAD_EXAMPLES=False # Allège l'interface
+      - POSTGRES_USER=airflow
+      - POSTGRES_PASSWORD=airflow
+      - POSTGRES_DB=airflow
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U airflow"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  airflow-init:
+    <<: *airflow-common
+    command: >
+      bash -c "airflow db init &&
+      airflow users create --username admin --firstname Abderrahmane --lastname Sefrani --role Admin --email admin@example.com --password admin"
+
+  airflow-webserver:
+    <<: *airflow-common
+    command: webserver
     ports:
       - "8080:8080"
-    volumes:
-      - ./dags:/opt/airflow/dags
-      - ./data:/opt/airflow/data
-      - ./jobs:/opt/airflow/jobs
+    restart: always
+
+  airflow-scheduler:
+    <<: *airflow-common
+    command: scheduler
+    restart: always
