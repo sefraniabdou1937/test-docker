@@ -1,48 +1,45 @@
+import logging
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import col
+from pyspark.sql.types import StructType, StructField, StringType, DoubleType
+
+# Configuration du logging natif Python
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 def main():
-    # Initialisation de la session Spark
     spark = SparkSession.builder \
         .appName("TraitementBatteries_Medallion") \
         .getOrCreate()
 
-    # Définition des chemins (faisant écho aux volumes configurés via Docker)
     chemin_bronze_json = "/opt/airflow/data/source_brute.json"
-    chemin_silver_csv = "/opt/airflow/data/silver_batteries_vehicules"
+    chemin_silver_parquet = "/opt/airflow/data/silver_batteries_vehicules"
     
-    print(f"[BRONZE] Lecture des données brutes depuis {chemin_bronze_json}...")
+    # 1. Définition stricte du schéma attendu
+    schema_batterie = StructType([
+        StructField("vin", StringType(), True),
+        StructField("soh_mesure_pct", DoubleType(), True),
+        # Ajoute ici les autres colonnes de ton JSON (ex: voltage_12v_v, temperature...)
+    ])
+
+    logger.info(f"[BRONZE] Lecture des données brutes depuis {chemin_bronze_json}")
     
-    # Lecture du format JSON. 
-    # L'option multiline=True est souvent nécessaire si le JSON est formaté sur plusieurs lignes.
+    # Lecture avec le schéma imposé
     df_bronze = spark.read \
         .option("multiline", "true") \
+        .schema(schema_batterie) \
         .json(chemin_bronze_json)
-    
-    print("Aperçu de la couche Bronze :")
-    df_bronze.show(5)
 
-    # --- Étape de transformation : De Bronze vers Silver ---
-    print("[SILVER] Nettoyage et préparation des données...")
-    
-    # Exemple de nettoyage : on s'assure que les indicateurs critiques de santé (SOH) 
-    # ou de tension (BMS) ne sont pas nuls avant de les passer à la couche suivante.
-    df_silver = df_bronze.dropna(subset=["vin"])
-    
-    # Tu peux ajouter ici d'autres transformations (cast des types, renommage de colonnes, etc.)
-    # df_silver = df_silver.withColumn("soh_mesure_pct", col("soh_mesure_pct").cast("double"))
+    logger.info("[SILVER] Nettoyage : Suppression des valeurs nulles sur le VIN et SOH")
+    df_silver = df_bronze.dropna(subset=["vin", "soh_mesure_pct"])
 
-    # Sauvegarde de la couche Silver en CSV
-    print(f"[SILVER] Écriture des données nettoyées au format CSV vers {chemin_silver_csv}...")
+    logger.info(f"[SILVER] Écriture des données au format PARQUET vers {chemin_silver_parquet}")
     
-    # L'écriture se fait dans un dossier. Spark va générer des fichiers partiels.
+    # Sauvegarde en Parquet au lieu de CSV
     df_silver.write \
         .mode("overwrite") \
-        .option("header", "true") \
-        .csv(chemin_silver_csv)
+        .parquet(chemin_silver_parquet)
     
-    print("Traitement de la couche Silver terminé avec succès !")
-    
+    logger.info("Traitement de la couche Silver terminé avec succès !")
     spark.stop()
 
 if __name__ == "__main__":

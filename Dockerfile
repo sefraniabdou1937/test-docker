@@ -7,6 +7,6 @@ RUN apt-get update && \
     apt-get install -y default-jre-headless && \
     apt-get clean
 
-# On installe PySpark dans Airflow
+# On installe PySpark ET le provider Spark pour Airflow
 USER airflow
-RUN pip install pyspark==3.5.0
+RUN pip install pyspark==3.5.0 apache-airflow-providers-apache-spark

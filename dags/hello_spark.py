@@ -1,32 +1,44 @@
-# dags/mon_pipeline.py
 from airflow import DAG
-from airflow.operators.bash import BashOperator
+from airflow.sensors.filesystem import FileSensor
+from airflow.providers.apache.spark.operators.spark_submit import SparkSubmitOperator
 from airflow.operators.empty import EmptyOperator
-from datetime import datetime
+from datetime import datetime, timedelta
+
+default_args = {
+    'owner': 'data_engineer',
+    'depends_on_past': False,
+    'retries': 1,
+    'retry_delay': timedelta(minutes=1),
+}
 
 with DAG(
-    dag_id='pipeline_traitement_spark',
+    dag_id='pipeline_traitement_spark_v2',
+    default_args=default_args,
     start_date=datetime(2024, 1, 1),
     schedule_interval='*/5 * * * *', 
     catchup=False,
-    tags=['spark', 'batch_processing']
+    tags=['spark', 'medallion', 'silver']
 ) as dag:
 
-    # 1. Le point de départ
-    start = EmptyOperator(
-        task_id='start'
+    start = EmptyOperator(task_id='start')
+
+    # 1. Le Sensor : Attend que le fichier source apparaisse dans le dossier
+    attendre_fichier_bronze = FileSensor(
+        task_id='attendre_fichier_bronze',
+        filepath='/opt/airflow/data/source_brute.json',
+        poke_interval=30, # Vérifie toutes les 30 secondes
+        timeout=300 # S'arrête si rien n'arrive après 5 minutes
     )
 
-    # 2. Ta tâche de calcul
-    executer_spark = BashOperator(
+    # 2. Le vrai lanceur Spark (remplace le BashOperator)
+    lancer_job_spark = SparkSubmitOperator(
         task_id='lancer_job_spark',
-        bash_command='python3 /opt/airflow/jobs/process_data.py'
+        application='/opt/airflow/jobs/process_data.py',
+        conn_id='spark_default', # Connexion locale par défaut
+        verbose=False
     )
 
-    # 3. Le point d'arrivée
-    end = EmptyOperator(
-        task_id='end'
-    )
+    end = EmptyOperator(task_id='end')
 
-    # 4. LA DÉFINITION DU FLUX
-    start >> executer_spark >> end
+    # Ordre d'exécution
+    start >> attendre_fichier_bronze >> lancer_job_spark >> end
