@@ -40,5 +40,16 @@ with DAG(
 
     end = EmptyOperator(task_id='end')
 
+    # À ajouter juste après ta tâche lancer_job_spark existante
+
+lancer_job_gold = SparkSubmitOperator(
+    task_id='lancer_job_gold',
+    application='/opt/airflow/jobs/process_gold.py',
+    conn_id='spark_default',
+    verbose=False
+)
+
+# Et on met à jour la ligne finale du flux d'exécution :
+start >> attendre_fichier_bronze >> lancer_job_spark >> lancer_job_gold >> end
+
     # Ordre d'exécution
-    start >> attendre_fichier_bronze >> lancer_job_spark >> end
