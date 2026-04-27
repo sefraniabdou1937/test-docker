@@ -1,3 +1,4 @@
+import os
 import logging
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import col, hash, date_format
@@ -11,9 +12,9 @@ def main():
         .appName("TraitementBatteries_Gold_StarSchema") \
         .getOrCreate()
 
-    # Définition des chemins
-    chemin_silver = "/opt/airflow/data/silver_batteries_vehicules"
-    chemin_gold = "/opt/airflow/data/gold"
+    # Utilisation des variables dynamiques du fichier .env
+    chemin_silver = os.getenv("SILVER_DATA_PATH", "/opt/airflow/data/silver_batteries_vehicules")
+    chemin_gold = os.getenv("GOLD_DATA_PATH", "/opt/airflow/data/gold")
     
     logger.info(f"Lecture des données Silver depuis {chemin_silver}...")
     df_silver = spark.read.parquet(chemin_silver)
