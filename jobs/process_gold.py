@@ -53,8 +53,8 @@ def main():
     # Préparation : on calcule les clés étrangères manquantes (id_diagnostic et formatage des dates en entier YYYYMMDD)
     fait_prepare = df_silver \
         .withColumn("id_diagnostic", hash(*colonnes_diag)) \
-        .withColumn("date_intervention_id", date_format(col("date_intervention"), "yyyyMMdd").cast("int")) \
-        .withColumn("date_planifiee_id", date_format(col("date_planifiee_prochaine"), "yyyyMMdd").cast("int"))
+        .withColumn("date_intervention_id", date_format(col("date_intervention"), "yyyy-MM-dd").cast("int")) \
+        .withColumn("date_planifiee_id", date_format(col("date_planifiee_prochaine"), "yyyy-MM-dd").cast("int"))
 
     # Sélection stricte des clés et des métriques
     colonnes_faits = [
